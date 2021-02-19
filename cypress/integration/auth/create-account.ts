@@ -2,7 +2,7 @@ describe("Create Account", () => {
   const user = cy;
   it("should see email / password validation errors", () => {
     user.visit("/");
-    user.findByText(/create an account/i).click();
+    user.findByText(/create account/i).click();
     user.findByPlaceholderText(/email/i).type("non@good");
     user.findByRole("alert").should("have.text", "Please enter a valid email");
     user.findByPlaceholderText(/email/i).clear();
@@ -15,14 +15,28 @@ describe("Create Account", () => {
     user.findByRole("alert").should("have.text", "Password is required");
   });
   it("should be able to create account and login", () => {
+    user.intercept("http://localhost:4000/graphql", (req) => {
+      const { operationName } = req.body;
+      if (operationName && operationName === "createAccountMutation") {
+        req.reply((res) => {
+          res.send({
+            data: {
+              createAccount: {
+                ok: true,
+                error: null,
+                __typename: "CreateAccountOutput",
+              },
+            },
+          });
+        });
+      }
+    });
     user.visit("/create-account");
-    user.findByPlaceholderText(/email/i).type("33333@mail.com");
-    user.findByPlaceholderText(/password/i).type("real@mail.com");
+    user.findByPlaceholderText(/email/i).type("user@user.com");
+    user.findByPlaceholderText(/password/i).type("12121212");
     user.findByRole("button").click();
     user.wait(1000);
-    user.findByPlaceholderText(/email/i).type("33333@mail.com");
-    user.findByPlaceholderText(/password/i).type("real@mail.com");
-    user.findByRole("button").click();
-    user.window().its("localStorage.nuber-token").should("be.a", "string");
+    // @ts-ignore
+    user.login("user@user.com", "12121212");
   });
 });
