@@ -1,13 +1,15 @@
-import { gql, useMutation } from "@apollo/client";
+import { gql, useApolloClient, useMutation } from "@apollo/client";
 import React, { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useForm } from "react-hook-form";
 import { Button } from "../../components/button";
 import { FormError } from "../../components/form-error";
+import { MY_RESTAURANTS_QUERY } from "./my-restaurants";
 import {
   createRestaurant,
   createRestaurantVariables,
 } from "../../__generated__/createRestaurant";
+import { useHistory } from "react-router-dom";
 
 const CREATE_RESTAURANT_MUTATION = gql`
   mutation createRestaurant($input: CreateRestaurantInput!) {
@@ -27,18 +29,49 @@ interface IFormProps {
 }
 
 export const AddRestaurant = () => {
+  const client = useApolloClient();
+  const history = useHistory();
+  const [imageUrl, setImageUrl] = useState("");
   const onCompleted = (data: createRestaurant) => {
     const {
       createRestaurant: { ok, restaurantId },
     } = data;
     if (ok) {
+      const { name, categoryName, address } = getValues();
       setUploading(false);
+      const queryResult = client.readQuery({ query: MY_RESTAURANTS_QUERY });
+      client.writeQuery({
+        query: MY_RESTAURANTS_QUERY,
+        data: {
+          myRestaurants: {
+            ...queryResult.myRestaurants,
+            restaurants: [
+              {
+                address,
+                category: {
+                  name: categoryName,
+                  __typename: "Category",
+                },
+                coverImg: imageUrl,
+                id: restaurantId,
+                isPromoted: false,
+                name,
+                __typename: "Restaurant",
+              },
+              ...queryResult.myRestaurants.restaurants,
+            ],
+          },
+        },
+      });
+      history.push("/");
     }
   };
   const [createRestaurantMutation, { data }] = useMutation<
     createRestaurant,
     createRestaurantVariables
-  >(CREATE_RESTAURANT_MUTATION, { onCompleted });
+  >(CREATE_RESTAURANT_MUTATION, {
+    onCompleted,
+  });
   const { register, getValues, formState, handleSubmit } = useForm<IFormProps>({
     mode: "onChange",
   });
@@ -56,6 +89,7 @@ export const AddRestaurant = () => {
           body: formBody,
         })
       ).json();
+      setImageUrl(coverImg);
       createRestaurantMutation({
         variables: {
           input: {
@@ -67,7 +101,6 @@ export const AddRestaurant = () => {
         },
       });
     } catch (e) {}
-    console.log(getValues());
   };
   return (
     <div className="container flex flex-col items-center mt-52">
@@ -84,21 +117,21 @@ export const AddRestaurant = () => {
           type="text"
           name="name"
           placeholder="Name"
-          ref={register({ required: "Name is required" })}
+          ref={register({ required: "Name is required." })}
         />
         <input
           className="input"
           type="text"
           name="address"
           placeholder="Address"
-          ref={register({ required: "Address is required" })}
+          ref={register({ required: "Address is required." })}
         />
         <input
           className="input"
           type="text"
           name="categoryName"
           placeholder="Category Name"
-          ref={register({ required: "Category Name is required" })}
+          ref={register({ required: "Category Name is required." })}
         />
         <div>
           <input
