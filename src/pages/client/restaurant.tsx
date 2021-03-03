@@ -57,19 +57,52 @@ export const Restaurant = () => {
   const triggerStartOrder = () => {
     setOrderStarted(true);
   };
+  const getItem = (dishId: number) => {
+    return orderItems.find((order) => order.dishId === dishId);
+  };
   const isSelected = (dishId: number) => {
-    return Boolean(orderItems.find((order) => order.dishId === dishId));
+    return Boolean(getItem(dishId));
   };
   const addItemToOrder = (dishId: number) => {
     if (isSelected(dishId)) {
       return;
     }
-    setOrderItems((current) => [{ dishId }, ...current]);
+    setOrderItems((current) => [{ dishId, options: [] }, ...current]);
   };
-  const removeFromItems = (dishId: number) => {
+  const removeFromOrder = (dishId: number) => {
     setOrderItems((current) =>
       current.filter((dish) => dish.dishId !== dishId)
     );
+  };
+  const addOptionToItem = (dishId: number, option: any) => {
+    if (!isSelected(dishId)) {
+      return;
+    }
+    const oldItem = getItem(dishId);
+    if (oldItem) {
+      const hasOption = Boolean(
+        oldItem.options?.find((aOption) => aOption.name == option.name)
+      );
+      if (!hasOption) {
+        removeFromOrder(dishId);
+        setOrderItems((current) => [
+          { dishId, options: [option, ...oldItem.options!] },
+          ...current,
+        ]);
+      }
+    }
+  };
+  const getOptionFromItem = (
+    item: CreateOrderItemInput,
+    optionName: string
+  ) => {
+    return item.options?.find((option) => option.name === optionName);
+  };
+  const isOptionSelected = (dishId: number, optionName: string) => {
+    const item = getItem(dishId);
+    if (item) {
+      return Boolean(getOptionFromItem(item, optionName));
+    }
   };
   console.log(orderItems);
   return (
@@ -78,7 +111,7 @@ export const Restaurant = () => {
         <title>{data?.restaurant.restaurant?.name || ""} | Nuber Eats</title>
       </Helmet>
       <div
-        className="bg-gray-800 bg-center bg-cover py-48"
+        className=" bg-gray-800 bg-center bg-cover py-48"
         style={{
           backgroundImage: `url(${data?.restaurant.restaurant?.coverImg})`,
         }}
@@ -103,15 +136,36 @@ export const Restaurant = () => {
               isSelected={isSelected(dish.id)}
               id={dish.id}
               orderStarted={orderStarted}
-              key={dish.id}
+              key={index}
               name={dish.name}
               description={dish.description}
               price={dish.price}
               isCustomer={true}
               options={dish.options}
               addItemToOrder={addItemToOrder}
-              removeFromOrder={removeFromItems}
-            />
+              removeFromOrder={removeFromOrder}
+            >
+              {dish.options?.map((option, index) => (
+                <span
+                  onClick={() =>
+                    addOptionToItem
+                      ? addOptionToItem(dish.id, {
+                          name: option.name,
+                        })
+                      : null
+                  }
+                  className={`flex border items-center ${
+                    isOptionSelected(dish.id, option.name)
+                      ? "border-gray-800"
+                      : ""
+                  }`}
+                  key={index}
+                >
+                  <h6 className="mr-2">{option.name}</h6>
+                  <h6 className="text-sm opacity-75">(${option.extra})</h6>
+                </span>
+              ))}
+            </Dish>
           ))}
         </div>
       </div>
